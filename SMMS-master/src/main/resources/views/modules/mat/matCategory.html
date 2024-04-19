@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>物料列表</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <link rel="stylesheet" href="../../css/bootstrap.min.css">
+    <link rel="stylesheet" href="../../css/font-awesome.min.css">
+    <link rel="stylesheet" href="../../plugins/jqgrid/ui.jqgrid-bootstrap.css">
+    <link rel="stylesheet" href="../../plugins/ztree/css/metroStyle/metroStyle.css">
+    <link rel="stylesheet" href="../../css/bootstrap-table.min.css">
+    <link rel="stylesheet" href="../../css/main.css">
+    <script src="../../libs/jquery.min.js"></script>
+    <script src="../../plugins/layer/layer.js"></script>
+    <script src="../../libs/bootstrap.min.js"></script>
+    <script src="../../libs/vue.min.js"></script>
+    <script src="../../libs/bootstrap-table.min.js"></script>
+    <script src="../../plugins/treegrid/jquery.treegrid.min.js"></script>
+    <script src="../../plugins/treegrid/jquery.treegrid.bootstrap3.js"></script>
+    <script src="../../plugins/treegrid/jquery.treegrid.extension.js"></script>
+    <script src="../../plugins/treegrid/tree.table.js"></script>
+    <script src="../../plugins/jqgrid/grid.locale-cn.js"></script>
+    <script src="../../plugins/jqgrid/jquery.jqGrid.min.js"></script>
+    <script src="../../plugins/ztree/jquery.ztree.all.min.js"></script>
+    <script src="../../libs/ajaxupload.js"></script>
+    <script src="../../js/common.js"></script>
+    <style>
+        td {
+            vertical-align: middle !important;
+        }
+
+        .ui-jqgrid tr.jqgrow td {
+            white-space: normal !important;
+            height: auto;
+            vertical-align: text-top;
+            padding-top: 2px;
+        }
+        #fileInfoLayer td{
+            text-align: center;
+        }
+        #fileInfoLayer a{
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+<div id="app" v-cloak>
+    <div v-show="showList">
+        <div class="grid-btn">
+            <div v-if="hasPermission('mat:material:list')" class="form-group col-sm-2">
+                <input type="text" class="form-control" @keyup.enter="query" v-model="q.item" placeholder="部件名称">
+            </div>
+            <a v-if="hasPermission('mat:material:list')" class="btn btn-default" @click="query">查询</a>
+            <a v-if="hasPermission('mat:material:save')" class="btn btn-primary" @click="add"><i class="fa fa-plus">&nbsp;新增</i></a>
+            <a v-if="hasPermission('mat:material:update')" class="btn btn-primary" @click="update"><i class="fa fa-pencil-square-o">&nbsp;修改</i></a>
+            <a v-if="hasPermission('mat:material:delete')" class="btn btn-primary" @click="del"><i class="fa fa-trash-o">&nbsp;删除</i></a>
+            <a v-if="hasPermission('mat:project:material:save')" class="btn btn-success" @click="addToProject" ><i class="fa fa-cart-arrow-down">&nbsp;添加至项目</i></a>
+        </div>
+
+        <table id="jqGrid"></table>
+        <div id="jqGridPager"></div>
+    </div>
+
+    <!--添加或修改-->
+    <div v-show="!showList" class="panel panel-default">
+        <div class="panel-heading">{{title}}</div>
+        <form class="form-horizontal">
+            <div class="form-group">
+                <div class="col-sm-2 control-label">部件名称</div>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" v-model="material.item" placeholder="部件名称"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">部件型号</div>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" v-model="material.model" placeholder="部件型号"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">应用产品</div>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" v-model="material.applications" placeholder="应用产品"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">生产厂家</div>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" v-model="material.manufacturer" placeholder="生产厂家"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">价格</div>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" v-model="material.price" placeholder="价格"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">网址</div>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" v-model="material.website" placeholder="网址"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">联系方式</div>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" v-model="material.contact" placeholder="联系方式"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">备注</div>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" v-model="material.remarks" placeholder="备注"/>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-sm-2 control-label">产品图像</div>
+                <div class="col-sm-10">
+                    <a class="btn btn-primary" id="uploadProductPicture"><i class="fa fa-plus"></i>&nbsp;上传图片</a>
+                    <img style="height: 100px" :src="material.productPicture?['/SMMS/mat/material/productPicture?pictureName='+material.productPicture]:''" />
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">爆炸图</div>
+                <div class="col-sm-10">
+                    <a class="btn btn-primary" id="explodedView"><i class="fa fa-plus"></i>&nbsp;上传爆炸图</a>
+                    <span>{{file.explodedView}}</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">2D组装图</div>
+                <div class="col-sm-10">
+                    <a class="btn btn-primary" id="assemblyDrawing2d"><i class="fa fa-plus"></i>&nbsp;上传2D组装图</a>
+                    <span>{{file.assemblyDrawing2d}}</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">3D组装图</div>
+                <div class="col-sm-10">
+                    <a class="btn btn-primary" id="assemblyDrawing3d"><i class="fa fa-plus"></i>&nbsp;上传3D组装图</a>
+                    <span>{{file.assemblyDrawing3d}}</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">技术文件</div>
+                <div class="col-sm-10">
+                    <a class="btn btn-primary" id="technicalNote"><i class="fa fa-plus"></i>&nbsp;上传技术文件</a>
+                    <span>{{file.technicalNote}}</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label">相关实验报告</div>
+                <div class="col-sm-10">
+                    <a class="btn btn-primary" id="relatedExperimentReport"><i class="fa fa-plus"></i>&nbsp;上传相关实验报告</a>
+                    <span>{{file.relatedExperimentReport}}</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2 control-label"></div>
+                <input type="button" class="btn btn-primary" @click="saveOrUpdate" value="确定"/>
+                &nbsp;&nbsp;<input type="button" class="btn btn-warning" @click="reload" value="返回"/>
+            </div>
+        </form>
+    </div>
+
+    <!-- 资料下载列表弹窗 -->
+    <div id="fileInfoLayer" style="display: none;padding:10px;">
+        <table class="table table-hover table-bordered">
+            <tr>
+                <td>爆炸图：</td>
+                <td v-if="file.explodedView"><a @click="downloadFile('explodedView')"><span class="glyphicon glyphicon-download-alt"></span></a></td>
+                <td v-else>暂未上传</td>
+            </tr>
+           <tr>
+               <td>2D组装图：</td>
+               <td v-if="file.assemblyDrawing2d"><a @click="downloadFile('assemblyDrawing2d')"><span class="glyphicon glyphicon-download-alt"></span></a></td>
+               <td v-else>暂未上传</td>
+           </tr>
+           <tr>
+               <td>3D组装图：</td>
+               <td v-if="file.assemblyDrawing3d"><a @click="downloadFile('assemblyDrawing3d')"><span class="glyphicon glyphicon-download-alt"></span></a></td>
+               <td v-else>暂未上传</td>
+           </tr>
+           <tr>
+               <td>技术文件：</td>
+               <td v-if="file.technicalNote"><a @click="downloadFile('technicalNote')"><span class="glyphicon glyphicon-download-alt"></span></a></td>
+               <td v-else>暂未上传</td>
+           </tr>
+            <tr>
+                <td>与实验相关报告：</td>
+                <td v-if="file.relatedExperimentReport"><a @click="downloadFile('relatedExperimentReport')"><span class="glyphicon glyphicon-download-alt"></span></a></td>
+                <td v-else>暂未上传</td>
+            </tr>
+        </table>
+    </div>
+
+    <!--项目选择弹窗-->
+    <div id="projectSelectLayer" style="display: none;padding: 10px">
+        <div class="grid-btn">
+            <a v-if="hasPermission('mat:project:list')" class="btn btn-primary" @click="saveMatProject"><i class="fa fa-plus">&nbsp;提交</i></a>
+        </div>
+        <table id="projectTable" data-mobile-responsive="true" data-click-to-select="true">
+            <thead>
+            <tr>
+                <th data-field="selectItem" data-checkbox="true"></th>
+            </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+<script src="../../js/modules/mat/matCategory.js"></script>
+</body>
+</html>
